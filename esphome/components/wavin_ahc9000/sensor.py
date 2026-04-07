@@ -2,6 +2,11 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import sensor
 from esphome.const import (
+    CONF_UNIT_OF_MEASUREMENT,
+    CONF_ACCURACY_DECIMALS,
+    CONF_DEVICE_CLASS,
+    CONF_STATE_CLASS,
+    CONF_ICON,
     UNIT_PERCENT,
     DEVICE_CLASS_BATTERY,
     ICON_BATTERY,
@@ -16,66 +21,68 @@ CONF_PARENT_ID = "wavin_ahc9000_id"
 CONF_CHANNEL = "channel"
 CONF_TYPE = "type"
 
-# Per-type schema defaults
+# Per-type sensor field defaults (plain dicts, not schemas)
 _SENSOR_DEFAULTS = {
-    "battery": sensor.sensor_schema(
-        unit_of_measurement=UNIT_PERCENT,
-        icon=ICON_BATTERY,
-        accuracy_decimals=0,
-        device_class=DEVICE_CLASS_BATTERY,
-        state_class=STATE_CLASS_MEASUREMENT,
-    ),
-    "temperature": sensor.sensor_schema(
-        unit_of_measurement=UNIT_CELSIUS,
-        accuracy_decimals=1,
-        device_class=DEVICE_CLASS_TEMPERATURE,
-        state_class=STATE_CLASS_MEASUREMENT,
-    ),
-    "comfort_setpoint": sensor.sensor_schema(
-        unit_of_measurement=UNIT_CELSIUS,
-        accuracy_decimals=1,
-        device_class=DEVICE_CLASS_TEMPERATURE,
-        state_class=STATE_CLASS_MEASUREMENT,
-    ),
-    "floor_temperature": sensor.sensor_schema(
-        unit_of_measurement=UNIT_CELSIUS,
-        accuracy_decimals=1,
-        device_class=DEVICE_CLASS_TEMPERATURE,
-        state_class=STATE_CLASS_MEASUREMENT,
-    ),
-    "floor_min_temperature": sensor.sensor_schema(
-        unit_of_measurement=UNIT_CELSIUS,
-        accuracy_decimals=1,
-        device_class=DEVICE_CLASS_TEMPERATURE,
-        state_class=STATE_CLASS_MEASUREMENT,
-    ),
-    "floor_max_temperature": sensor.sensor_schema(
-        unit_of_measurement=UNIT_CELSIUS,
-        accuracy_decimals=1,
-        device_class=DEVICE_CLASS_TEMPERATURE,
-        state_class=STATE_CLASS_MEASUREMENT,
-    ),
+    "battery": {
+        CONF_UNIT_OF_MEASUREMENT: UNIT_PERCENT,
+        CONF_ICON: ICON_BATTERY,
+        CONF_ACCURACY_DECIMALS: 0,
+        CONF_DEVICE_CLASS: DEVICE_CLASS_BATTERY,
+        CONF_STATE_CLASS: STATE_CLASS_MEASUREMENT,
+    },
+    "temperature": {
+        CONF_UNIT_OF_MEASUREMENT: UNIT_CELSIUS,
+        CONF_ACCURACY_DECIMALS: 1,
+        CONF_DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        CONF_STATE_CLASS: STATE_CLASS_MEASUREMENT,
+    },
+    "comfort_setpoint": {
+        CONF_UNIT_OF_MEASUREMENT: UNIT_CELSIUS,
+        CONF_ACCURACY_DECIMALS: 1,
+        CONF_DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        CONF_STATE_CLASS: STATE_CLASS_MEASUREMENT,
+    },
+    "floor_temperature": {
+        CONF_UNIT_OF_MEASUREMENT: UNIT_CELSIUS,
+        CONF_ACCURACY_DECIMALS: 1,
+        CONF_DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        CONF_STATE_CLASS: STATE_CLASS_MEASUREMENT,
+    },
+    "floor_min_temperature": {
+        CONF_UNIT_OF_MEASUREMENT: UNIT_CELSIUS,
+        CONF_ACCURACY_DECIMALS: 1,
+        CONF_DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        CONF_STATE_CLASS: STATE_CLASS_MEASUREMENT,
+    },
+    "floor_max_temperature": {
+        CONF_UNIT_OF_MEASUREMENT: UNIT_CELSIUS,
+        CONF_ACCURACY_DECIMALS: 1,
+        CONF_DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        CONF_STATE_CLASS: STATE_CLASS_MEASUREMENT,
+    },
 }
 
-def _sensor_schema(config):
-    """Validate and apply per-type schema defaults."""
-    sensor_type = config[CONF_TYPE]
-    schema = _SENSOR_DEFAULTS[sensor_type].extend({
-        cv.GenerateID(CONF_PARENT_ID): cv.use_id(WavinAHC9000),
-        cv.Required(CONF_CHANNEL): cv.int_range(min=1, max=16),
-        cv.Required(CONF_TYPE): cv.one_of(*_SENSOR_DEFAULTS.keys(), lower=True),
-    })
-    return schema(config)
 
-CONFIG_SCHEMA = cv.Schema(
-    {
-        cv.GenerateID(CONF_PARENT_ID): cv.use_id(WavinAHC9000),
-        cv.Required(CONF_CHANNEL): cv.int_range(min=1, max=16),
-        cv.Required(CONF_TYPE): cv.one_of(*_SENSOR_DEFAULTS.keys(), lower=True),
-    }
-).extend(sensor.sensor_schema())
+def _apply_sensor_defaults(config):
+    """Fill in per-type defaults for sensor fields not explicitly set."""
+    defaults = _SENSOR_DEFAULTS[config[CONF_TYPE]]
+    config = dict(config)
+    for key, value in defaults.items():
+        if key not in config:
+            config[key] = value
+    return config
 
-CONFIG_SCHEMA = cv.All(CONFIG_SCHEMA, _sensor_schema)
+
+CONFIG_SCHEMA = cv.All(
+    sensor.sensor_schema().extend(
+        {
+            cv.GenerateID(CONF_PARENT_ID): cv.use_id(WavinAHC9000),
+            cv.Required(CONF_CHANNEL): cv.int_range(min=1, max=16),
+            cv.Required(CONF_TYPE): cv.one_of(*_SENSOR_DEFAULTS.keys(), lower=True),
+        }
+    ),
+    _apply_sensor_defaults,
+)
 
 
 async def to_code(config):
