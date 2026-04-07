@@ -21,7 +21,8 @@ CONF_PARENT_ID = "wavin_ahc9000_id"
 CONF_CHANNEL = "channel"
 CONF_TYPE = "type"
 
-# Per-type sensor field defaults (plain dicts, not schemas)
+# Per-type sensor field defaults (plain dicts, strings only — will be
+# validated and converted to proper ESPHome types by sensor.sensor_schema())
 _SENSOR_DEFAULTS = {
     "battery": {
         CONF_UNIT_OF_MEASUREMENT: UNIT_PERCENT,
@@ -62,9 +63,20 @@ _SENSOR_DEFAULTS = {
     },
 }
 
+# Extra wavin-specific fields shared across both schema passes
+_WAVIN_FIELDS = {
+    cv.GenerateID(CONF_PARENT_ID): cv.use_id(WavinAHC9000),
+    cv.Required(CONF_CHANNEL): cv.int_range(min=1, max=16),
+    cv.Required(CONF_TYPE): cv.one_of(*_SENSOR_DEFAULTS.keys(), lower=True),
+}
+
 
 def _apply_sensor_defaults(config):
-    """Fill in per-type defaults for sensor fields not explicitly set."""
+    """Fill in per-type defaults BEFORE sensor.sensor_schema() validates them.
+
+    This ensures string values like STATE_CLASS_MEASUREMENT are converted to
+    proper ESPHome enum types by the schema validator that follows.
+    """
     defaults = _SENSOR_DEFAULTS[config[CONF_TYPE]]
     config = dict(config)
     for key, value in defaults.items():
@@ -74,14 +86,14 @@ def _apply_sensor_defaults(config):
 
 
 CONFIG_SCHEMA = cv.All(
-    sensor.sensor_schema().extend(
-        {
-            cv.GenerateID(CONF_PARENT_ID): cv.use_id(WavinAHC9000),
-            cv.Required(CONF_CHANNEL): cv.int_range(min=1, max=16),
-            cv.Required(CONF_TYPE): cv.one_of(*_SENSOR_DEFAULTS.keys(), lower=True),
-        }
-    ),
+    # Pass 1: validate wavin-specific fields; allow all other keys through
+    # so that sensor fields (name, id, …) are not rejected.
+    cv.Schema(_WAVIN_FIELDS, extra=cv.ALLOW_EXTRA),
+    # Fill in per-type defaults while values are still plain strings.
     _apply_sensor_defaults,
+    # Pass 2: full sensor schema validation — converts strings to typed
+    # ESPHome values (e.g. "measurement" → StateClass enum) exactly once.
+    sensor.sensor_schema().extend(_WAVIN_FIELDS),
 )
 
 
