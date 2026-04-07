@@ -73,7 +73,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Required(CONF_CHANNEL): cv.int_range(min=1, max=16),
         cv.Required(CONF_TYPE): cv.one_of(*_SENSOR_DEFAULTS.keys(), lower=True),
     }
-).extend(sensor.SENSOR_SCHEMA)
+).extend(sensor.sensor_schema())
 
 CONFIG_SCHEMA = cv.All(CONFIG_SCHEMA, _sensor_schema)
 
